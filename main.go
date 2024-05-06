@@ -7,6 +7,8 @@ import (
 func main() {
 	// Create a multiplexer that can handle HTTP requests for a server at its endpoints
 	mux := http.NewServeMux()
+	// Creates a Handler that handles HTTP requests at the path and returns system files
+	mux.Handle("/", http.FileServer(http.Dir(".")))
 	// Update the multiplexer to accept CORS data
 	corsMux := middlewareCors(mux)
 	// Setup a server that uses the new multiplexer
