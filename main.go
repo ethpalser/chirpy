@@ -8,7 +8,8 @@ func main() {
 	// Create a multiplexer that can handle HTTP requests for a server at its endpoints
 	mux := http.NewServeMux()
 	// Creates a Handler that handles HTTP requests at the path and returns system files
-	mux.Handle("/", http.FileServer(http.Dir(".")))
+	mux.Handle("/app/*", http.StripPrefix("/app", http.FileServer(http.Dir("."))))
+	mux.HandleFunc("/healthz", health)
 	// Update the multiplexer to accept CORS data
 	corsMux := middlewareCors(mux)
 	// Setup a server that uses the new multiplexer
@@ -32,6 +33,5 @@ func middlewareCors(next http.Handler) http.Handler {
 func health(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	body := "OK"
-	w.Write([]byte(body))
+	w.Write([]byte("OK"))
 }
