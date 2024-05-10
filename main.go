@@ -5,7 +5,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 )
+
+type Chirp struct {
+	message string
+}
 
 func main() {
 	// Create a multiplexer that can handle HTTP requests for a server at its endpoints
@@ -94,11 +99,13 @@ func validate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cleaned := filterProfanity(params.Body)
+
 	type returnBody struct {
-		Valid bool `json:"valid"`
+		Cleaned string `json:"cleaned_body"`
 	}
 	respBody := returnBody{
-		Valid: true,
+		Cleaned: cleaned,
 	}
 	responseWithJSON(w, 200, respBody)
 }
@@ -126,4 +133,23 @@ func responseWithJSON(w http.ResponseWriter, code int, body interface{}) {
 	}
 	w.WriteHeader(code)
 	w.Write(json)
+}
+
+func filterProfanity(msg string) string {
+	profanity := map[string]bool{
+		"kerfuffle": true,
+		"sharbert":  true,
+		"fornax":    true,
+	}
+	msg_split := strings.Split(msg, " ")
+
+	lower := strings.ToLower(msg)
+	lower_split := strings.Split(lower, " ")
+	for index, word := range lower_split {
+		_, ok := profanity[word]
+		if ok {
+			msg_split[index] = "****"
+		}
+	}
+	return strings.Join(msg_split, " ")
 }
