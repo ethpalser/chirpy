@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 )
 
@@ -15,6 +17,7 @@ func main() {
 	mux.HandleFunc("GET /api/healthz", health)
 	mux.HandleFunc("GET /admin/metrics", apiCfg.hits)
 	mux.HandleFunc("/api/reset", apiCfg.reset)
+	mux.HandleFunc("/api/validate_chirp", validate)
 	// Update the multiplexer to accept CORS data
 	corsMux := middlewareCors(mux)
 	// Setup a server that uses the new multiplexer
@@ -70,4 +73,60 @@ func (cfg *apiConfig) hits(w http.ResponseWriter, r *http.Request) {
 func (cfg *apiConfig) reset(w http.ResponseWriter, r *http.Request) {
 	cfg.fileserverHits = 0
 	w.WriteHeader(http.StatusOK)
+}
+
+func validate(w http.ResponseWriter, r *http.Request) {
+	type parameters struct {
+		Body string `json:"body"`
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	params := parameters{}
+	err := decoder.Decode(&params)
+	if err != nil {
+		// an error will be thrown if the JSON is invalid or has the wrong types
+		log.Printf("Error decoding parameters: %s", err)
+		w.WriteHeader(500)
+		w.Write([]byte(`{"error":"Something went wrong"}`))
+		return
+	}
+
+	if len(params.Body) > 140 {
+		type returnErr struct {
+			Error string `json:"error"`
+		}
+
+		respErr := returnErr{
+			Error: "Chirp is too long",
+		}
+		dat, err := json.Marshal(respErr)
+		if err != nil {
+			log.Printf("Error marshalling JSON: %s", err)
+			w.WriteHeader(500)
+			w.Write([]byte(`{"error":"Something went wrong"}`))
+			return
+		}
+
+		w.WriteHeader(400)
+		w.Write(dat)
+		return
+	}
+
+	type returnBody struct {
+		Valid bool `json:"valid"`
+	}
+	respBody := returnBody{
+		Valid: true,
+	}
+	dat, err := json.Marshal(respBody)
+	if err != nil {
+		log.Printf("Error marshalling JSON: %s", err)
+		w.WriteHeader(500)
+		w.Write([]byte(`{"error":"Something went wrong"}`))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	w.Write(dat)
 }
