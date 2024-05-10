@@ -13,7 +13,7 @@ func main() {
 	// Creates a Handler that handles HTTP requests at the path and returns system files
 	mux.Handle("/app/*", apiCfg.middlewareMetricsInc(handler))
 	mux.HandleFunc("GET /api/healthz", health)
-	mux.HandleFunc("GET /api/metrics", apiCfg.hits)
+	mux.HandleFunc("GET /admin/metrics", apiCfg.hits)
 	mux.HandleFunc("/api/reset", apiCfg.reset)
 	// Update the multiplexer to accept CORS data
 	corsMux := middlewareCors(mux)
@@ -55,7 +55,16 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 func (cfg *apiConfig) hits(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hits: " + fmt.Sprint(cfg.fileserverHits)))
+	template := `<html>
+
+<body>
+	<h1>Welcome, Chirpy Admin</h1>
+	<p>Chirpy has been visited %d times!</p>
+</body>
+
+</html>
+`
+	w.Write([]byte(fmt.Sprintf(template, cfg.fileserverHits)))
 }
 
 func (cfg *apiConfig) reset(w http.ResponseWriter, r *http.Request) {
