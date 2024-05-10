@@ -76,8 +76,8 @@ func (db *DB) loadDB() (DBStructure, error) {
 	if err != nil {
 		return DBStructure{nil}, err
 	}
-	dbStruct := DBStructure{}
-	mErr := json.Unmarshal(file, dbStruct)
+	dbStruct := *new(DBStructure)
+	mErr := json.Unmarshal(file, &dbStruct)
 	if mErr != nil {
 		log.Printf("Error decoding database JSON: %s", err)
 		return DBStructure{nil}, err
