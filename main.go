@@ -84,31 +84,13 @@ func validate(w http.ResponseWriter, r *http.Request) {
 	params := parameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
-		// an error will be thrown if the JSON is invalid or has the wrong types
 		log.Printf("Error decoding parameters: %s", err)
-		w.WriteHeader(500)
-		w.Write([]byte(`{"error":"Something went wrong"}`))
+		responseWithError(w, 500, "Something went wrong")
 		return
 	}
 
 	if len(params.Body) > 140 {
-		type returnErr struct {
-			Error string `json:"error"`
-		}
-
-		respErr := returnErr{
-			Error: "Chirp is too long",
-		}
-		dat, err := json.Marshal(respErr)
-		if err != nil {
-			log.Printf("Error marshalling JSON: %s", err)
-			w.WriteHeader(500)
-			w.Write([]byte(`{"error":"Something went wrong"}`))
-			return
-		}
-
-		w.WriteHeader(400)
-		w.Write(dat)
+		responseWithError(w, 400, "Chirp is too long")
 		return
 	}
 
@@ -118,15 +100,30 @@ func validate(w http.ResponseWriter, r *http.Request) {
 	respBody := returnBody{
 		Valid: true,
 	}
-	dat, err := json.Marshal(respBody)
+	responseWithJSON(w, 200, respBody)
+}
+
+func responseWithError(w http.ResponseWriter, code int, msg string) {
+	if code > 499 {
+		log.Printf("Responding with 5xx error: %s", msg)
+	}
+	type returnErr struct {
+		Error string `json:"error"`
+	}
+	responseWithJSON(w, code, returnErr{
+		Error: msg,
+	})
+}
+
+func responseWithJSON(w http.ResponseWriter, code int, body interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	json, err := json.Marshal(body)
 	if err != nil {
 		log.Printf("Error marshalling JSON: %s", err)
 		w.WriteHeader(500)
 		w.Write([]byte(`{"error":"Something went wrong"}`))
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	w.Write(dat)
+	w.WriteHeader(code)
+	w.Write(json)
 }
