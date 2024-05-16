@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 	"sync"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 var connectionString string = "database.json"
@@ -90,7 +92,7 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 	return chirps, err
 }
 
-func (db *DB) CreateUser(email string) (User, error) {
+func (db *DB) CreateUser(email string, password string) (User, error) {
 	db.mux.Lock()
 	defer db.mux.Unlock()
 
@@ -103,10 +105,23 @@ func (db *DB) CreateUser(email string) (User, error) {
 		data.Users = make(map[int]User)
 	}
 
+	var existing *User
+	for _, dbUser := range data.Users {
+		if dbUser.Email == email {
+			existing = &dbUser
+			break
+		}
+	}
+
+	if existing != nil {
+		return User{}, errors.New("email already used by existing user")
+	}
+
 	id := len(data.Users) + 1
 	user := User{
-		Id:    id,
-		Email: email,
+		Id:       id,
+		Email:    email,
+		Password: password,
 	}
 	data.Users[id] = user
 	wErr := db.writeDB(data)
@@ -115,6 +130,35 @@ func (db *DB) CreateUser(email string) (User, error) {
 	}
 
 	return user, nil
+}
+
+func (db *DB) Login(email string, password string) (User, error) {
+	db.mux.Lock()
+	defer db.mux.Unlock()
+
+	data, err := db.loadDB()
+	if err != nil {
+		return User{}, err
+	}
+
+	var user *User
+	for _, dbUser := range data.Users {
+		if dbUser.Email == email {
+			user = &dbUser
+			break
+		}
+	}
+
+	if user == nil {
+		return User{}, errors.New("user does not exist")
+	}
+
+	compErr := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+	if compErr != nil {
+		return User{}, errors.New("unauthorized")
+	}
+
+	return *user, nil
 }
 
 func (db *DB) ensureDB() error {

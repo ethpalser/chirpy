@@ -9,6 +9,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Chirp struct {
@@ -17,8 +19,9 @@ type Chirp struct {
 }
 
 type User struct {
-	Id    int    `json:"id"`
-	Email string `json:"email"`
+	Id       int    `json:"id"`
+	Email    string `json:"email"`
+	Password string `json:"password,omitempty"`
 }
 
 func main() {
@@ -46,6 +49,7 @@ func main() {
 	mux.Handle("GET /api/chirps", getAllChirps(*db))
 	mux.Handle("POST /api/chirps", postChirp(*db))
 	mux.Handle("POST /api/users", postUser(*db))
+	mux.Handle("POST /api/login", login(*db))
 	// Update the multiplexer to accept CORS data
 	corsMux := middlewareCors(mux)
 	// Setup a server that uses the new multiplexer
@@ -226,7 +230,8 @@ func postUser(db DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Parse
 		type parameters struct {
-			Email string `json:"email"`
+			Email    string `json:"email"`
+			Password string `json:"password"`
 		}
 
 		decoder := json.NewDecoder(r.Body)
@@ -238,17 +243,59 @@ func postUser(db DB) http.Handler {
 			responseWithError(w, 500, "Something went wrong")
 			return
 		}
+
+		hashpass, bcErr := bcrypt.GenerateFromPassword([]byte(params.Password), 10)
+		if bcErr != nil {
+			log.Printf("Error hashing password.")
+			responseWithError(w, 500, "Something went wrong")
+			return
+		}
+
 		// Save
 		enErr := db.ensureDB()
 		if enErr != nil {
 			responseWithError(w, 500, enErr.Error())
 			return
 		}
-		json, getErr := db.CreateUser(params.Email)
+		json, getErr := db.CreateUser(params.Email, string(hashpass))
 		if getErr != nil {
 			responseWithError(w, 500, getErr.Error())
 			return
 		}
 		responseWithJSON(w, 201, json)
+	})
+}
+
+func login(db DB) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Parse
+		type parameters struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
+
+		decoder := json.NewDecoder(r.Body)
+		params := parameters{}
+		err := decoder.Decode(&params)
+
+		if err != nil {
+			log.Printf("Error decoding parameters: %s", err)
+			responseWithError(w, 500, "Something went wrong")
+			return
+		}
+
+		enErr := db.ensureDB()
+		if enErr != nil {
+			responseWithError(w, 500, enErr.Error())
+			return
+		}
+		json, getErr := db.Login(params.Email, params.Password)
+		json.Password = "" // Work-around to exclude in response
+
+		if getErr != nil {
+			responseWithError(w, 401, getErr.Error())
+			return
+		}
+		responseWithJSON(w, 200, json)
 	})
 }
