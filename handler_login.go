@@ -2,8 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+
+	"github.com/ethpalser/chirpy/internal/auth"
 )
 
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
@@ -30,8 +33,16 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token, jwtErr := auth.IssueJWT(fmt.Sprint(dbUser.Id), cfg.jwtSecret, -1)
+	if jwtErr != nil {
+		responseWithError(w, http.StatusInternalServerError, jwtErr.Error())
+		return
+	}
+
+	//w.Header().Add("Authorization", fmt.Sprintf("Bearer: %s", token))
 	responseWithJSON(w, http.StatusOK, UserView{
 		ID:    dbUser.Id,
 		Email: dbUser.Email,
+		Token: token,
 	})
 }

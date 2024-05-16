@@ -52,6 +52,31 @@ func findUserByEmail(email string, users map[int]User) *User {
 	return existing
 }
 
+func (db *DB) UpdateUser(id int, email string, password string) error {
+	data, err := db.loadDB()
+	if err != nil {
+		return err
+	}
+
+	_, ok := data.Users[id]
+	if !ok {
+		return ErrNotExist
+	}
+
+	hashPassword, hashErr := auth.CreatePasswordHash(password)
+	if hashErr != nil {
+		return hashErr
+	}
+
+	data.Users[id] = User{
+		Id:       id,
+		Email:    email,
+		Password: hashPassword,
+	}
+
+	return db.writeDB(data)
+}
+
 func (db *DB) Login(email string, password string, expireSeconds int) (User, error) {
 	data, err := db.loadDB()
 	if err != nil {

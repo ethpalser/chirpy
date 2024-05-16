@@ -8,6 +8,7 @@ import (
 type UserView struct {
 	ID    int    `json:"id"`
 	Email string `json:"email"`
+	Token string `json:"token,omitempty"`
 }
 
 func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request) {
