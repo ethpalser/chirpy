@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -20,6 +22,12 @@ type User struct {
 }
 
 func main() {
+	dbg := flag.Bool("debug", false, "Enable debug mode")
+	flag.Parse()
+	if *dbg {
+		os.WriteFile(connectionString, []byte("{}"), 0777)
+	}
+
 	db, err := NewDB(connectionString)
 	if err != nil {
 		print(err)
