@@ -1,13 +1,13 @@
 package database
 
 import (
-	"errors"
+	"github.com/ethpalser/chirpy/internal/auth"
 )
 
 type User struct {
 	Id       int    `json:"id"`
 	Email    string `json:"email"`
-	Password string `json:"password,omitempty"`
+	Password string `json:"password"`
 }
 
 func (db *DB) CreateUser(email string, password string) (User, error) {
@@ -16,27 +16,21 @@ func (db *DB) CreateUser(email string, password string) (User, error) {
 		return User{}, err
 	}
 
-	if data.Users == nil {
-		data.Users = make(map[int]User)
-	}
-
-	var existing *User
-	for _, dbUser := range data.Users {
-		if dbUser.Email == email {
-			existing = &dbUser
-			break
-		}
-	}
-
+	existing := findUserByEmail(email, data.Users)
 	if existing != nil {
-		return User{}, errors.New("email already used by existing user")
+		return User{}, ErrConflict
+	}
+
+	hashPassword, err := auth.CreatePasswordHash(password)
+	if err != nil {
+		return User{}, err
 	}
 
 	id := len(data.Users) + 1
 	user := User{
 		Id:       id,
 		Email:    email,
-		Password: password,
+		Password: hashPassword,
 	}
 	data.Users[id] = user
 	wErr := db.writeDB(data)
@@ -47,23 +41,32 @@ func (db *DB) CreateUser(email string, password string) (User, error) {
 	return user, nil
 }
 
+func findUserByEmail(email string, users map[int]User) *User {
+	var existing *User
+	for _, dbUser := range users {
+		if dbUser.Email == email {
+			existing = &dbUser
+			break
+		}
+	}
+	return existing
+}
+
 func (db *DB) Login(email string, password string, expireSeconds int) (User, error) {
 	data, err := db.loadDB()
 	if err != nil {
 		return User{}, err
 	}
 
-	var user *User
-	for _, dbUser := range data.Users {
-		if dbUser.Email == email {
-			user = &dbUser
-			break
-		}
+	existing := findUserByEmail(email, data.Users)
+	if existing == nil {
+		return User{}, ErrConflict
 	}
 
-	if user == nil {
-		return User{}, errors.New("user does not exist")
+	verified := auth.VerifyPasswordHash(existing.Password, password)
+	if verified != nil {
+		return User{}, ErrUnauthorized
 	}
 
-	return *user, nil
+	return *existing, nil
 }

@@ -7,6 +7,7 @@ import (
 	"sync"
 )
 
+var ErrConflict = errors.New("conflict with existing resource")
 var ErrNotExist = errors.New("resource does not exist")
 var ErrUnauthorized = errors.New("unauthorized access")
 

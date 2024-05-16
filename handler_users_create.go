@@ -26,7 +26,7 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
 
 	dbUser, getErr := cfg.database.CreateUser(params.Email, params.Password)
 	if getErr != nil {
-		responseWithError(w, http.StatusConflict, getErr.Error())
+		responseWithError(w, http.StatusInternalServerError, getErr.Error())
 		return
 	}
 

@@ -13,10 +13,6 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 		return Chirp{Message: ""}, err
 	}
 
-	if data.Chirps == nil {
-		data.Chirps = make(map[int]Chirp)
-	}
-
 	id := len(data.Chirps) + 1
 	chirp := Chirp{
 		Id:      id,
