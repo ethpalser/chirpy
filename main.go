@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -28,6 +29,7 @@ func main() {
 	mux.HandleFunc("GET /api/healthz", health)
 	mux.HandleFunc("GET /admin/metrics", apiCfg.hits)
 	mux.HandleFunc("/api/reset", apiCfg.reset)
+	mux.Handle("GET /api/chirps/{chirpID}", getOneChirp(*db))
 	mux.Handle("GET /api/chirps", getAllChirps(*db))
 	mux.Handle("POST /api/chirps", postChirp(*db))
 	// Update the multiplexer to accept CORS data
@@ -87,36 +89,6 @@ func (cfg *apiConfig) reset(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// func validate(w http.ResponseWriter, r *http.Request) {
-// 	type parameters struct {
-// 		Body string `json:"body"`
-// 	}
-
-// 	decoder := json.NewDecoder(r.Body)
-// 	params := parameters{}
-// 	err := decoder.Decode(&params)
-// 	if err != nil {
-// 		log.Printf("Error decoding parameters: %s", err)
-// 		responseWithError(w, 500, "Something went wrong")
-// 		return
-// 	}
-
-// 	if len(params.Body) > 140 {
-// 		responseWithError(w, 400, "Chirp is too long")
-// 		return
-// 	}
-
-// 	cleaned := filterProfanity(params.Body)
-
-// 	type returnBody struct {
-// 		Cleaned string `json:"cleaned_body"`
-// 	}
-// 	respBody := returnBody{
-// 		Cleaned: cleaned,
-// 	}
-// 	responseWithJSON(w, 200, respBody)
-// }
-
 func responseWithError(w http.ResponseWriter, code int, msg string) {
 	if code > 499 {
 		log.Printf("Responding with 5xx error: %s", msg)
@@ -159,6 +131,28 @@ func filterProfanity(msg string) string {
 		}
 	}
 	return strings.Join(msg_split, " ")
+}
+
+func getOneChirp(db DB) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		enErr := db.ensureDB()
+		if enErr != nil {
+			responseWithError(w, 500, enErr.Error())
+			return
+		}
+		pathVal := r.PathValue("chirpID")
+		idVal, atoiErr := strconv.Atoi(pathVal)
+		if atoiErr != nil {
+			responseWithError(w, 500, atoiErr.Error())
+			return
+		}
+		json, getErr := db.GetChirp(idVal)
+		if getErr != nil {
+			responseWithError(w, 404, getErr.Error())
+			return
+		}
+		responseWithJSON(w, 200, json)
+	})
 }
 
 func getAllChirps(db DB) http.Handler {
