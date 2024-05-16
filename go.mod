@@ -1,4 +1,4 @@
-module chirpy.com/m
+module github.com/ethpalser/chirpy
 
 go 1.22.2
 
