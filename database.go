@@ -132,7 +132,7 @@ func (db *DB) CreateUser(email string, password string) (User, error) {
 	return user, nil
 }
 
-func (db *DB) Login(email string, password string) (User, error) {
+func (db *DB) Login(email string, password string, expireSeconds int) (User, error) {
 	db.mux.Lock()
 	defer db.mux.Unlock()
 

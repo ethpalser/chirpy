@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -25,12 +26,19 @@ type User struct {
 }
 
 func main() {
+	godotenv.Load()
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	secret := os.Getenv("JWT_SECRET")
+
 	dbg := flag.Bool("debug", false, "Enable debug mode")
 	flag.Parse()
 	if *dbg {
 		os.WriteFile(connectionString, []byte("{}"), 0777)
 	}
-
 	db, err := NewDB(connectionString)
 	if err != nil {
 		print(err)
@@ -39,7 +47,10 @@ func main() {
 	// Create a multiplexer that can handle HTTP requests for a server at its endpoints
 	mux := http.NewServeMux()
 	handler := http.StripPrefix("/app", http.FileServer(http.Dir(".")))
-	apiCfg := apiConfig{}
+	apiCfg := apiConfig{
+		fileserverHits: 0,
+		jwtSecret:      secret,
+	}
 	// Creates a Handler that handles HTTP requests at the path and returns system files
 	mux.Handle("/app/*", apiCfg.middlewareMetricsInc(handler))
 	mux.HandleFunc("GET /api/healthz", health)
@@ -78,6 +89,7 @@ func health(w http.ResponseWriter, r *http.Request) {
 
 type apiConfig struct {
 	fileserverHits int
+	jwtSecret      string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -270,8 +282,9 @@ func login(db DB) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Parse
 		type parameters struct {
-			Email    string `json:"email"`
-			Password string `json:"password"`
+			Email         string `json:"email"`
+			Password      string `json:"password"`
+			ExpireSeconds int    `json:"expires_in_seconds"`
 		}
 
 		decoder := json.NewDecoder(r.Body)
@@ -289,7 +302,7 @@ func login(db DB) http.Handler {
 			responseWithError(w, 500, enErr.Error())
 			return
 		}
-		json, getErr := db.Login(params.Email, params.Password)
+		json, getErr := db.Login(params.Email, params.Password, params.ExpireSeconds)
 		json.Password = "" // Work-around to exclude in response
 
 		if getErr != nil {
