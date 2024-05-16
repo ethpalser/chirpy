@@ -17,6 +17,7 @@ type DB struct {
 
 type DBStructure struct {
 	Chirps map[int]Chirp `json:"chirps"`
+	Users  map[int]User  `json:"users"`
 }
 
 func NewDB(path string) (*DB, error) {
@@ -89,6 +90,33 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 	return chirps, err
 }
 
+func (db *DB) CreateUser(email string) (User, error) {
+	db.mux.Lock()
+	defer db.mux.Unlock()
+
+	data, err := db.loadDB()
+	if err != nil {
+		return User{}, err
+	}
+
+	if data.Users == nil {
+		data.Users = make(map[int]User)
+	}
+
+	id := len(data.Users) + 1
+	user := User{
+		Id:    id,
+		Email: email,
+	}
+	data.Users[id] = user
+	wErr := db.writeDB(data)
+	if wErr != nil {
+		return User{}, err
+	}
+
+	return user, nil
+}
+
 func (db *DB) ensureDB() error {
 	_, err := os.ReadFile(db.path)
 	if err != nil {
@@ -100,13 +128,13 @@ func (db *DB) ensureDB() error {
 func (db *DB) loadDB() (DBStructure, error) {
 	file, err := os.ReadFile(db.path)
 	if err != nil {
-		return DBStructure{nil}, err
+		return DBStructure{}, err
 	}
 	dbStruct := *new(DBStructure)
 	mErr := json.Unmarshal(file, &dbStruct)
 	if mErr != nil {
 		log.Printf("Error decoding database JSON: %s", err)
-		return DBStructure{nil}, err
+		return DBStructure{}, err
 	}
 	return dbStruct, nil
 }

@@ -14,6 +14,11 @@ type Chirp struct {
 	Message string `json:"body"`
 }
 
+type User struct {
+	Id    int    `json:"id"`
+	Email string `json:"email"`
+}
+
 func main() {
 	db, err := NewDB(connectionString)
 	if err != nil {
@@ -32,6 +37,7 @@ func main() {
 	mux.Handle("GET /api/chirps/{chirpID}", getOneChirp(*db))
 	mux.Handle("GET /api/chirps", getAllChirps(*db))
 	mux.Handle("POST /api/chirps", postChirp(*db))
+	mux.Handle("POST /api/users", postUser(*db))
 	// Update the multiplexer to accept CORS data
 	corsMux := middlewareCors(mux)
 	// Setup a server that uses the new multiplexer
@@ -200,6 +206,37 @@ func postChirp(db DB) http.Handler {
 			return
 		}
 		json, getErr := db.CreateChirp(cleaned)
+		if getErr != nil {
+			responseWithError(w, 500, getErr.Error())
+			return
+		}
+		responseWithJSON(w, 201, json)
+	})
+}
+
+func postUser(db DB) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Parse
+		type parameters struct {
+			Email string `json:"email"`
+		}
+
+		decoder := json.NewDecoder(r.Body)
+		params := parameters{}
+		err := decoder.Decode(&params)
+
+		if err != nil {
+			log.Printf("Error decoding parameters: %s", err)
+			responseWithError(w, 500, "Something went wrong")
+			return
+		}
+		// Save
+		enErr := db.ensureDB()
+		if enErr != nil {
+			responseWithError(w, 500, enErr.Error())
+			return
+		}
+		json, getErr := db.CreateUser(params.Email)
 		if getErr != nil {
 			responseWithError(w, 500, getErr.Error())
 			return
