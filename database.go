@@ -7,6 +7,8 @@ import (
 	"sync"
 )
 
+var connectionString string = "database.json"
+
 type DB struct {
 	path string
 	mux  *sync.RWMutex
@@ -18,7 +20,7 @@ type DBStructure struct {
 
 func NewDB(path string) (*DB, error) {
 	database := DB{
-		path: "database.json",
+		path: path,
 		mux:  &sync.RWMutex{},
 	}
 	err := database.ensureDB()
@@ -34,14 +36,22 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	defer db.mux.Unlock()
 	data, err := db.loadDB()
 	if err != nil {
-		return Chirp{message: ""}, err
+		return Chirp{Message: ""}, err
 	}
 
-	chirp := Chirp{message: body}
-	data.Chirps[len(data.Chirps)+1] = chirp
+	if data.Chirps == nil {
+		data.Chirps = make(map[int]Chirp)
+	}
+
+	id := len(data.Chirps) + 1
+	chirp := Chirp{
+		Id:      id,
+		Message: body,
+	}
+	data.Chirps[id] = chirp
 	wErr := db.writeDB(data)
 	if wErr != nil {
-		return Chirp{message: ""}, err
+		return Chirp{Message: ""}, err
 	}
 
 	return chirp, nil
@@ -65,10 +75,9 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 func (db *DB) ensureDB() error {
 	_, err := os.ReadFile(db.path)
 	if err != nil {
-		os.WriteFile(db.path, nil, 0644)
-		return nil
+		os.WriteFile(db.path, []byte("{}"), 0644)
 	}
-	return os.ErrExist
+	return nil
 }
 
 func (db *DB) loadDB() (DBStructure, error) {

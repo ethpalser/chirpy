@@ -9,10 +9,16 @@ import (
 )
 
 type Chirp struct {
-	message string
+	Id      int    `json:"id"`
+	Message string `json:"body"`
 }
 
 func main() {
+	db, err := NewDB(connectionString)
+	if err != nil {
+		print(err)
+		return
+	}
 	// Create a multiplexer that can handle HTTP requests for a server at its endpoints
 	mux := http.NewServeMux()
 	handler := http.StripPrefix("/app", http.FileServer(http.Dir(".")))
@@ -22,7 +28,8 @@ func main() {
 	mux.HandleFunc("GET /api/healthz", health)
 	mux.HandleFunc("GET /admin/metrics", apiCfg.hits)
 	mux.HandleFunc("/api/reset", apiCfg.reset)
-	mux.HandleFunc("/api/validate_chirp", validate)
+	mux.Handle("GET /api/chirps", getAllChirps(*db))
+	mux.Handle("POST /api/chirps", postChirp(*db))
 	// Update the multiplexer to accept CORS data
 	corsMux := middlewareCors(mux)
 	// Setup a server that uses the new multiplexer
@@ -80,35 +87,35 @@ func (cfg *apiConfig) reset(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func validate(w http.ResponseWriter, r *http.Request) {
-	type parameters struct {
-		Body string `json:"body"`
-	}
+// func validate(w http.ResponseWriter, r *http.Request) {
+// 	type parameters struct {
+// 		Body string `json:"body"`
+// 	}
 
-	decoder := json.NewDecoder(r.Body)
-	params := parameters{}
-	err := decoder.Decode(&params)
-	if err != nil {
-		log.Printf("Error decoding parameters: %s", err)
-		responseWithError(w, 500, "Something went wrong")
-		return
-	}
+// 	decoder := json.NewDecoder(r.Body)
+// 	params := parameters{}
+// 	err := decoder.Decode(&params)
+// 	if err != nil {
+// 		log.Printf("Error decoding parameters: %s", err)
+// 		responseWithError(w, 500, "Something went wrong")
+// 		return
+// 	}
 
-	if len(params.Body) > 140 {
-		responseWithError(w, 400, "Chirp is too long")
-		return
-	}
+// 	if len(params.Body) > 140 {
+// 		responseWithError(w, 400, "Chirp is too long")
+// 		return
+// 	}
 
-	cleaned := filterProfanity(params.Body)
+// 	cleaned := filterProfanity(params.Body)
 
-	type returnBody struct {
-		Cleaned string `json:"cleaned_body"`
-	}
-	respBody := returnBody{
-		Cleaned: cleaned,
-	}
-	responseWithJSON(w, 200, respBody)
-}
+// 	type returnBody struct {
+// 		Cleaned string `json:"cleaned_body"`
+// 	}
+// 	respBody := returnBody{
+// 		Cleaned: cleaned,
+// 	}
+// 	responseWithJSON(w, 200, respBody)
+// }
 
 func responseWithError(w http.ResponseWriter, code int, msg string) {
 	if code > 499 {
@@ -152,4 +159,57 @@ func filterProfanity(msg string) string {
 		}
 	}
 	return strings.Join(msg_split, " ")
+}
+
+func getAllChirps(db DB) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		enErr := db.ensureDB()
+		if enErr != nil {
+			responseWithError(w, 500, enErr.Error())
+			return
+		}
+		json, getErr := db.GetChirps()
+		if getErr != nil {
+			responseWithError(w, 500, getErr.Error())
+			return
+		}
+		responseWithJSON(w, 200, json)
+	})
+}
+
+func postChirp(db DB) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Parse
+		type parameters struct {
+			Body string `json:"body"`
+		}
+
+		decoder := json.NewDecoder(r.Body)
+		params := parameters{}
+		err := decoder.Decode(&params)
+		if err != nil {
+			log.Printf("Error decoding parameters: %s", err)
+			responseWithError(w, 500, "Something went wrong")
+			return
+		}
+
+		if len(params.Body) > 140 {
+			responseWithError(w, 400, "Chirp is too long")
+			return
+		}
+		// Validate
+		cleaned := filterProfanity(params.Body)
+		// Save
+		enErr := db.ensureDB()
+		if enErr != nil {
+			responseWithError(w, 500, enErr.Error())
+			return
+		}
+		json, getErr := db.CreateChirp(cleaned)
+		if getErr != nil {
+			responseWithError(w, 500, getErr.Error())
+			return
+		}
+		responseWithJSON(w, 201, json)
+	})
 }
