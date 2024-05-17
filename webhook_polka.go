@@ -3,12 +3,24 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 )
 
 func (cfg *apiConfig) webhookPolka(w http.ResponseWriter, r *http.Request) {
 	type WebhookRequest struct {
 		Event string                 `json:"event"`
 		Data  map[string]interface{} `json:"data"`
+	}
+
+	accessToken := r.Header.Get("Authorization")
+	if accessToken == "" {
+		responseWithError(w, http.StatusUnauthorized, "invalid auth token")
+		return
+	}
+	tokenVal := strings.TrimPrefix(accessToken, "ApiKey ")
+	if tokenVal != cfg.polkaApiKey {
+		responseWithError(w, http.StatusUnauthorized, "unauthorized access")
+		return
 	}
 
 	decoder := json.NewDecoder(r.Body)

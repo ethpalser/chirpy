@@ -14,6 +14,7 @@ type apiConfig struct {
 	fileserverHits int
 	database       database.DB
 	jwtSecret      string
+	polkaApiKey    string
 }
 
 func main() {
@@ -24,6 +25,7 @@ func main() {
 	}
 	jwtSecret := os.Getenv("JWT_SECRET")
 	dbSource := os.Getenv("DB_SOURCE")
+	polkaApiKey := os.Getenv("POLKA_API_KEY")
 
 	db, err := database.NewDB(dbSource)
 	if err != nil {
@@ -43,6 +45,7 @@ func main() {
 		fileserverHits: 0,
 		database:       *db,
 		jwtSecret:      jwtSecret,
+		polkaApiKey:    polkaApiKey,
 	}
 
 	// Create a multiplexer that can handle HTTP requests for a server at its endpoints
