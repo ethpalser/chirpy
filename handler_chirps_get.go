@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/ethpalser/chirpy/internal/auth"
+	"github.com/ethpalser/chirpy/internal/database"
 )
 
 func (cfg *apiConfig) handlerChirpsGetOne(w http.ResponseWriter, r *http.Request) {
@@ -50,13 +51,24 @@ func (cfg *apiConfig) handlerChirpsGetOne(w http.ResponseWriter, r *http.Request
 	}
 
 	responseWithJSON(w, http.StatusOK, ChirpView{
-		ID:   dbChirp.Id,
-		Body: dbChirp.Message,
+		ID:       dbChirp.Id,
+		Body:     dbChirp.Message,
+		AuthorID: dbChirp.AuthorID,
 	})
 }
 
 func (cfg *apiConfig) handlerChirpsGetAll(w http.ResponseWriter, r *http.Request) {
-	dbChirps, err := cfg.database.GetChirps()
+	queryAuthorId := r.URL.Query().Get("author_id")
+	optsAuthorId, convErr := strconv.Atoi(queryAuthorId)
+	if convErr != nil {
+		responseWithError(w, http.StatusInternalServerError, "something went wrong")
+		return
+	}
+
+	dbChirps, err := cfg.database.GetChirps(database.ChirpOptions{
+		AuthorID: optsAuthorId,
+	})
+
 	if err != nil {
 		responseWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -65,8 +77,9 @@ func (cfg *apiConfig) handlerChirpsGetAll(w http.ResponseWriter, r *http.Request
 	chirps := []ChirpView{}
 	for _, dbChirp := range dbChirps {
 		chirps = append(chirps, ChirpView{
-			ID:   dbChirp.Id,
-			Body: dbChirp.Message,
+			ID:       dbChirp.Id,
+			Body:     dbChirp.Message,
+			AuthorID: dbChirp.AuthorID,
 		})
 	}
 

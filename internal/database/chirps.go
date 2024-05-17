@@ -1,11 +1,19 @@
 package database
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/ethpalser/chirpy/internal/util"
+)
 
 type Chirp struct {
 	Id       int    `json:"id"`
 	Message  string `json:"body"`
 	AuthorID int    `json:"user_id"`
+}
+
+type ChirpOptions struct {
+	AuthorID int
 }
 
 func (db *DB) CreateChirp(body string, authorID int) (Chirp, error) {
@@ -42,7 +50,7 @@ func (db *DB) GetChirp(id int) (Chirp, error) {
 	return chirp, nil
 }
 
-func (db *DB) GetChirps() ([]Chirp, error) {
+func (db *DB) GetChirps(opts ChirpOptions) ([]Chirp, error) {
 	data, err := db.loadDB()
 	if err != nil {
 		return nil, err
@@ -52,6 +60,14 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 	for _, chirp := range data.Chirps {
 		chirps = append(chirps, chirp)
 	}
+
+	// Filter by AuthorID, ignore Zero value
+	if opts.AuthorID != 0 {
+		chirps = util.Filter(chirps, func(chirp Chirp) bool {
+			return opts.AuthorID == chirp.AuthorID
+		})
+	}
+
 	return chirps, err
 }
 
