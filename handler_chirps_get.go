@@ -4,9 +4,34 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
+
+	"github.com/ethpalser/chirpy/internal/auth"
 )
 
 func (cfg *apiConfig) handlerChirpsGetOne(w http.ResponseWriter, r *http.Request) {
+	accessToken := r.Header.Get("Authorization")
+	if accessToken == "" {
+		responseWithError(w, http.StatusUnauthorized, "invalid auth token")
+		return
+	}
+	tokenVal := strings.TrimPrefix(accessToken, "Bearer ")
+	jwtToken, jwtErr := auth.ParseJWT(cfg.jwtSecret, tokenVal)
+	if jwtErr != nil {
+		responseWithError(w, http.StatusInternalServerError, jwtErr.Error())
+		return
+	}
+	user, claimErr := jwtToken.Claims.GetSubject()
+	if claimErr != nil {
+		responseWithError(w, http.StatusInternalServerError, claimErr.Error())
+		return
+	}
+	userID, atoiErr := strconv.Atoi(user)
+	if atoiErr != nil {
+		responseWithError(w, http.StatusInternalServerError, atoiErr.Error())
+		return
+	}
+
 	pathVal := r.PathValue("chirpID")
 	idVal, atoiErr := strconv.Atoi(pathVal)
 	if atoiErr != nil {
@@ -18,6 +43,10 @@ func (cfg *apiConfig) handlerChirpsGetOne(w http.ResponseWriter, r *http.Request
 	if getErr != nil {
 		responseWithError(w, http.StatusNotFound, getErr.Error())
 		return
+	}
+
+	if dbChirp.AuthorID != userID {
+		responseWithError(w, http.StatusUnauthorized, "unauthorized access")
 	}
 
 	responseWithJSON(w, http.StatusOK, ChirpView{

@@ -3,25 +3,27 @@ package database
 import "errors"
 
 type Chirp struct {
-	Id      int    `json:"id"`
-	Message string `json:"body"`
+	Id       int    `json:"id"`
+	Message  string `json:"body"`
+	AuthorID int    `json:"user_id"`
 }
 
-func (db *DB) CreateChirp(body string) (Chirp, error) {
+func (db *DB) CreateChirp(body string, authorID int) (Chirp, error) {
 	data, err := db.loadDB()
 	if err != nil {
-		return Chirp{Message: ""}, err
+		return Chirp{}, err
 	}
 
 	id := len(data.Chirps) + 1
 	chirp := Chirp{
-		Id:      id,
-		Message: body,
+		Id:       id,
+		Message:  body,
+		AuthorID: authorID,
 	}
 	data.Chirps[id] = chirp
 	wErr := db.writeDB(data)
 	if wErr != nil {
-		return Chirp{Message: ""}, err
+		return Chirp{}, err
 	}
 
 	return chirp, nil

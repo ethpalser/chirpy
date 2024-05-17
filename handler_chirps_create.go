@@ -5,17 +5,43 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
+
+	"github.com/ethpalser/chirpy/internal/auth"
 )
 
 type ChirpView struct {
-	ID   int    `json:"id"`
-	Body string `json:"body"`
+	ID       int    `json:"id"`
+	Body     string `json:"body"`
+	AuthorID int    `json:"author_id"`
 }
 
 func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request) {
 	type ChripRequest struct {
 		Body string `json:"body"`
+	}
+
+	accessToken := r.Header.Get("Authorization")
+	if accessToken == "" {
+		responseWithError(w, http.StatusUnauthorized, "invalid auth token")
+		return
+	}
+	tokenVal := strings.TrimPrefix(accessToken, "Bearer ")
+	jwtToken, jwtErr := auth.ParseJWT(cfg.jwtSecret, tokenVal)
+	if jwtErr != nil {
+		responseWithError(w, http.StatusInternalServerError, jwtErr.Error())
+		return
+	}
+	user, claimErr := jwtToken.Claims.GetSubject()
+	if claimErr != nil {
+		responseWithError(w, http.StatusInternalServerError, claimErr.Error())
+		return
+	}
+	userID, atoiErr := strconv.Atoi(user)
+	if atoiErr != nil {
+		responseWithError(w, http.StatusInternalServerError, atoiErr.Error())
+		return
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -33,14 +59,15 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	dbChirp, getErr := cfg.database.CreateChirp(cleaned)
+	dbChirp, getErr := cfg.database.CreateChirp(cleaned, userID)
 	if getErr != nil {
 		responseWithError(w, http.StatusBadRequest, getErr.Error())
 		return
 	}
 	responseWithJSON(w, http.StatusCreated, ChirpView{
-		ID:   dbChirp.Id,
-		Body: dbChirp.Message,
+		ID:       dbChirp.Id,
+		Body:     dbChirp.Message,
+		AuthorID: userID,
 	})
 }
 
