@@ -66,6 +66,8 @@ func main() {
 	mux.HandleFunc("POST /api/revoke", apiCfg.handlerTokenRevoke)
 	// Admin APIs
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
+	// Webhooks
+	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.webhookPolka)
 	// Update the multiplexer to accept CORS data
 	corsMux := middlewareCors(mux)
 	// Setup a server that uses the new multiplexer
