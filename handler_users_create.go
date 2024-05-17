@@ -10,6 +10,7 @@ type UserView struct {
 	Email        string `json:"email"`
 	Token        string `json:"token,omitempty"`
 	RefreshToken string `json:"refresh_token,omitempty"`
+	PremiumRed   bool   `json:"is_chirpy_red"`
 }
 
 func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request) {
@@ -33,7 +34,8 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
 	}
 
 	responseWithJSON(w, http.StatusCreated, UserView{
-		ID:    dbUser.Id,
-		Email: dbUser.Email,
+		ID:         dbUser.Id,
+		Email:      dbUser.Email,
+		PremiumRed: dbUser.PremiumRed,
 	})
 }

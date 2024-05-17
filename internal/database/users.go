@@ -5,9 +5,10 @@ import (
 )
 
 type User struct {
-	Id       int    `json:"id"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Id         int    `json:"id"`
+	Email      string `json:"email"`
+	Password   string `json:"password"`
+	PremiumRed bool   `json:"is_chirpy_red"`
 }
 
 func (db *DB) CreateUser(email string, password string) (User, error) {
@@ -72,6 +73,27 @@ func (db *DB) UpdateUser(id int, email string, password string) error {
 		Id:       id,
 		Email:    email,
 		Password: hashPassword,
+	}
+
+	return db.writeDB(data)
+}
+
+func (db *DB) UpdateUserPremiumRed(id int, isPremiumRed bool) error {
+	data, err := db.loadDB()
+	if err != nil {
+		return err
+	}
+
+	user, ok := data.Users[id]
+	if !ok {
+		return ErrNotExist
+	}
+
+	data.Users[id] = User{
+		Id:         id,
+		Email:      user.Email,
+		Password:   user.Password,
+		PremiumRed: isPremiumRed,
 	}
 
 	return db.writeDB(data)
