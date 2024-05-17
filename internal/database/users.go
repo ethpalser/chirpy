@@ -77,7 +77,7 @@ func (db *DB) UpdateUser(id int, email string, password string) error {
 	return db.writeDB(data)
 }
 
-func (db *DB) Login(email string, password string, expireSeconds int) (User, error) {
+func (db *DB) Login(email string, password string) (User, error) {
 	data, err := db.loadDB()
 	if err != nil {
 		return User{}, err

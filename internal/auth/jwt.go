@@ -1,13 +1,12 @@
 package auth
 
 import (
-	"log"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func IssueJWT(subject string, secret string, expiresInSeconds int) (string, error) {
+func IssueJWT(secret string, subject string, expiresInSeconds int) (string, error) {
 	var expireTime int
 	if 0 < expiresInSeconds && expiresInSeconds < 86400 {
 		expireTime = expiresInSeconds
@@ -18,7 +17,7 @@ func IssueJWT(subject string, secret string, expiresInSeconds int) (string, erro
 	registeredClaims := jwt.RegisteredClaims{
 		Issuer:    "chirpy",
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(expireTime))),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second * time.Duration(expireTime))),
 		Subject:   subject,
 	}
 
@@ -26,13 +25,13 @@ func IssueJWT(subject string, secret string, expiresInSeconds int) (string, erro
 	return token.SignedString([]byte(secret))
 }
 
-func ParseJWT(token string) (*jwt.Token, error) {
-	keyFunc := func(token *jwt.Token) (interface{}, error) {
-		return []byte("test"), nil
+func ParseJWT(secret string, token string) (*jwt.Token, error) {
+	keyFunc := func(jwtToken *jwt.Token) (interface{}, error) {
+		return []byte(secret), nil
 	}
+
 	jwt, err := jwt.ParseWithClaims(token, jwt.MapClaims{}, keyFunc)
 	if err != nil {
-		log.Fatal("Issue parsing jwt token")
 		return nil, err
 	}
 	return jwt, nil

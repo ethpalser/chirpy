@@ -27,13 +27,13 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dbUser, getErr := cfg.database.Login(params.Email, params.Password, params.ExpireSeconds)
+	dbUser, getErr := cfg.database.Login(params.Email, params.Password)
 	if getErr != nil {
 		responseWithError(w, http.StatusUnauthorized, getErr.Error())
 		return
 	}
 
-	token, jwtErr := auth.IssueJWT(fmt.Sprint(dbUser.Id), cfg.jwtSecret, -1)
+	token, jwtErr := auth.IssueJWT(cfg.jwtSecret, fmt.Sprint(dbUser.Id), params.ExpireSeconds)
 	if jwtErr != nil {
 		responseWithError(w, http.StatusInternalServerError, jwtErr.Error())
 		return

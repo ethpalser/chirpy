@@ -23,24 +23,24 @@ func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	tokenHeader := r.Header.Get("token")
+	tokenHeader := r.Header.Get("Authorization")
 	// Removing 'Bearer ' from 'Autorization: Bearer <token>'
 	token := strings.TrimPrefix(tokenHeader, "Bearer ")
-	jwt, parseErr := auth.ParseJWT(token)
+	jwt, parseErr := auth.ParseJWT(cfg.jwtSecret, token)
 	if parseErr != nil {
-		responseWithError(w, http.StatusInternalServerError, parseErr.Error())
+		responseWithError(w, http.StatusUnauthorized, parseErr.Error())
 		return
 	}
 
 	userIdStr, claimErr := jwt.Claims.GetSubject()
 	if claimErr != nil {
-		responseWithError(w, http.StatusInternalServerError, claimErr.Error())
+		responseWithError(w, http.StatusUnauthorized, claimErr.Error())
 		return
 	}
 
 	userId, convErr := strconv.Atoi(userIdStr)
 	if convErr != nil {
-		responseWithError(w, http.StatusInternalServerError, convErr.Error())
+		responseWithError(w, http.StatusUnauthorized, convErr.Error())
 		return
 	}
 
