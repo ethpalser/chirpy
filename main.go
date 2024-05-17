@@ -60,6 +60,9 @@ func main() {
 	mux.HandleFunc("GET /api/chirps", apiCfg.handlerChirpsGetAll)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerChirpsGetOne)
 	mux.HandleFunc("POST /api/chirps", apiCfg.handlerChirpsCreate)
+	// Token APIs
+	mux.HandleFunc("POST /api/refresh", apiCfg.handlerTokenRefresh)
+	mux.HandleFunc("POST /api/revoke", apiCfg.handlerTokenRevoke)
 	// Admin APIs
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
 	// Update the multiplexer to accept CORS data

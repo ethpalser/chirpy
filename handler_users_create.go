@@ -6,9 +6,10 @@ import (
 )
 
 type UserView struct {
-	ID    int    `json:"id"`
-	Email string `json:"email"`
-	Token string `json:"token,omitempty"`
+	ID           int    `json:"id"`
+	Email        string `json:"email"`
+	Token        string `json:"token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
 func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request) {
@@ -31,7 +32,7 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	responseWithJSON(w, 201, UserView{
+	responseWithJSON(w, http.StatusCreated, UserView{
 		ID:    dbUser.Id,
 		Email: dbUser.Email,
 	})

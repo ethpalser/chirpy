@@ -39,10 +39,16 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//w.Header().Add("Authorization", fmt.Sprintf("Bearer: %s", token))
+	dbToken, refErr := cfg.database.CreateRefreshToken(dbUser.Id)
+	if refErr != nil {
+		responseWithError(w, http.StatusInternalServerError, refErr.Error())
+		return
+	}
+
 	responseWithJSON(w, http.StatusOK, UserView{
-		ID:    dbUser.Id,
-		Email: dbUser.Email,
-		Token: token,
+		ID:           dbUser.Id,
+		Email:        dbUser.Email,
+		Token:        token,
+		RefreshToken: dbToken.Val,
 	})
 }
