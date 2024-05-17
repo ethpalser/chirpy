@@ -2,7 +2,6 @@ package main
 
 import (
 	"net/http"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -51,7 +50,7 @@ func (cfg *apiConfig) handlerChirpsGetOne(w http.ResponseWriter, r *http.Request
 	}
 
 	responseWithJSON(w, http.StatusOK, ChirpView{
-		ID:       dbChirp.Id,
+		ID:       dbChirp.ID,
 		Body:     dbChirp.Message,
 		AuthorID: dbChirp.AuthorID,
 	})
@@ -59,14 +58,20 @@ func (cfg *apiConfig) handlerChirpsGetOne(w http.ResponseWriter, r *http.Request
 
 func (cfg *apiConfig) handlerChirpsGetAll(w http.ResponseWriter, r *http.Request) {
 	queryAuthorId := r.URL.Query().Get("author_id")
-	optsAuthorId, convErr := strconv.Atoi(queryAuthorId)
-	if convErr != nil {
-		responseWithError(w, http.StatusInternalServerError, "something went wrong")
-		return
+	optsAuthorId := 0
+	if queryAuthorId != "" {
+		var convErr error
+		optsAuthorId, convErr = strconv.Atoi(queryAuthorId)
+		if convErr != nil {
+			responseWithError(w, http.StatusInternalServerError, "something went wrong")
+			return
+		}
 	}
+	querySortOrder := r.URL.Query().Get("sort")
 
 	dbChirps, err := cfg.database.GetChirps(database.ChirpOptions{
 		AuthorID: optsAuthorId,
+		SortAsc:  querySortOrder != "desc",
 	})
 
 	if err != nil {
@@ -77,15 +82,11 @@ func (cfg *apiConfig) handlerChirpsGetAll(w http.ResponseWriter, r *http.Request
 	chirps := []ChirpView{}
 	for _, dbChirp := range dbChirps {
 		chirps = append(chirps, ChirpView{
-			ID:       dbChirp.Id,
+			ID:       dbChirp.ID,
 			Body:     dbChirp.Message,
 			AuthorID: dbChirp.AuthorID,
 		})
 	}
-
-	sort.Slice(chirps, func(i, j int) bool {
-		return chirps[i].ID < chirps[j].ID
-	})
 
 	responseWithJSON(w, http.StatusOK, chirps)
 }

@@ -2,18 +2,20 @@ package database
 
 import (
 	"errors"
+	"sort"
 
 	"github.com/ethpalser/chirpy/internal/util"
 )
 
 type Chirp struct {
-	Id       int    `json:"id"`
+	ID       int    `json:"id"`
 	Message  string `json:"body"`
 	AuthorID int    `json:"user_id"`
 }
 
 type ChirpOptions struct {
 	AuthorID int
+	SortAsc  bool
 }
 
 func (db *DB) CreateChirp(body string, authorID int) (Chirp, error) {
@@ -24,7 +26,7 @@ func (db *DB) CreateChirp(body string, authorID int) (Chirp, error) {
 
 	id := len(data.Chirps) + 1
 	chirp := Chirp{
-		Id:       id,
+		ID:       id,
 		Message:  body,
 		AuthorID: authorID,
 	}
@@ -67,6 +69,14 @@ func (db *DB) GetChirps(opts ChirpOptions) ([]Chirp, error) {
 			return opts.AuthorID == chirp.AuthorID
 		})
 	}
+
+	sort.Slice(chirps, func(i, j int) bool {
+		if opts.SortAsc {
+			return chirps[i].ID < chirps[j].ID
+		} else {
+			return chirps[i].ID > chirps[j].ID
+		}
+	})
 
 	return chirps, err
 }
