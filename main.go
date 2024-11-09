@@ -1,36 +1,47 @@
 package main
 
+import _ "github.com/lib/pq"
+
 import (
 	"flag"
 	"log"
 	"net/http"
 	"os"
+	"database/sql"
 
-	"github.com/ethpalser/chirpy/internal/database"
+	database "github.com/ethpalser/chirpy/internal/database"
+	database2 "github.com/ethpalser/chirpy/internal/database/v2"
 	"github.com/joho/godotenv"
 )
 
 type apiConfig struct {
-	fileserverHits int
-	database       database.DB
-	jwtSecret      string
-	polkaApiKey    string
+	fileserverHits 	int
+	database	database.DB
+	dbQueries	*database2.Queries
+	jwtSecret      	string
+	polkaApiKey    	string
 }
 
 func main() {
-	godotenv.Load()
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
 	jwtSecret := os.Getenv("JWT_SECRET")
-	dbSource := os.Getenv("DB_SOURCE")
+	dbSource := os.Getenv("DB_URL")
 	polkaApiKey := os.Getenv("POLKA_API_KEY")
 
 	db, err := database.NewDB(dbSource)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// for sqlc and goose update
+	db2, err := sql.Open("postgres", dbSource)
+	if err != nil {
+		log.Fatal(err)
+	}
+	dbQueries := database2.New(db2)
 
 	dbg := flag.Bool("debug", false, "Enable debug mode")
 	flag.Parse()
@@ -44,6 +55,7 @@ func main() {
 	apiCfg := apiConfig{
 		fileserverHits: 0,
 		database:       *db,
+		dbQueries:	dbQueries,
 		jwtSecret:      jwtSecret,
 		polkaApiKey:    polkaApiKey,
 	}
