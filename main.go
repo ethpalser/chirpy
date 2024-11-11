@@ -78,7 +78,8 @@ func main() {
 	// Chirp APIs
 	mux.HandleFunc("GET /api/chirps", apiCfg.handlerChirpsGetAll)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerChirpsGetOne)
-	mux.HandleFunc("POST /api/chirps", apiCfg.handlerChirpsCreate)
+	//	mux.HandleFunc("POST /api/chirps", apiCfg.handlerChirpsCreate)
+	mux.HandleFunc("POST /api/chirps", apiCfg.handlerChirpsCreateV2)
 	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.handlerChirpsDelete)
 	// Token APIs
 	mux.HandleFunc("POST /api/refresh", apiCfg.handlerTokenRefresh)

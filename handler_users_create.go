@@ -9,8 +9,8 @@ import (
 )
 
 type UserView struct {
-	ID           int    `json:"id"`
-	UUID		uuid.UUID	`json:"uuid"`
+	ID           int    `json:"id_old"`
+	UUID		uuid.UUID	`json:"id"`
 	Email        string `json:"email"`
 	Token        string `json:"token,omitempty"`
 	RefreshToken string `json:"refresh_token,omitempty"`
