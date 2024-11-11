@@ -90,3 +90,24 @@ func (cfg *apiConfig) handlerChirpsGetAll(w http.ResponseWriter, r *http.Request
 
 	responseWithJSON(w, http.StatusOK, chirps)
 }
+
+func (cfg *apiConfig) handlerChirpsGetAllV2(w http.ResponseWriter, r *http.Request) {
+	dbChirps, err := cfg.dbQueries.GetAllChirps(r.Context())
+	if err != nil {
+		responseWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	chirps := make([]ChirpView, len(dbChirps))
+	for i, c := range dbChirps {
+		chirps[i] = ChirpView{
+			UUID: c.ID,
+			CreatedAt: c.CreatedAt,
+			UpdatedAt: c.UpdatedAt,
+			Body: c.Body,
+			UserID: c.UserID,
+		}
+	}
+	
+	responseWithJSON(w, http.StatusOK, chirps)
+}
