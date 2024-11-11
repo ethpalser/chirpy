@@ -28,7 +28,8 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 	jwtSecret := os.Getenv("JWT_SECRET")
-	dbSource := os.Getenv("DB_URL")
+	dbSource := os.Getenv("DB_SOURCE")
+	dbURL := os.Getenv("DB_URL")
 	polkaApiKey := os.Getenv("POLKA_API_KEY")
 
 	db, err := database.NewDB(dbSource)
@@ -37,7 +38,7 @@ func main() {
 	}
 
 	// for sqlc and goose update
-	db2, err := sql.Open("postgres", dbSource)
+	db2, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -67,8 +68,11 @@ func main() {
 	// General APIs
 	mux.HandleFunc("GET /api/healthz", health)
 	mux.HandleFunc("GET /api/reset", apiCfg.handlerMetricsReset)
+	// Admin APIs
+	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
 	// User APIs
-	mux.HandleFunc("POST /api/users", apiCfg.handlerUsersCreate)
+	//	mux.HandleFunc("POST /api/users", apiCfg.handlerUsersCreate)
+	mux.HandleFunc("POST /api/users", apiCfg.handlerUsersCreateV2)
 	mux.HandleFunc("PUT /api/users", apiCfg.handlerUsersUpdate)
 	mux.HandleFunc("POST /api/login", apiCfg.handlerLogin)
 	// Chirp APIs
