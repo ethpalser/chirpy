@@ -7,6 +7,7 @@ import (
 
 	"github.com/ethpalser/chirpy/internal/auth"
 	"github.com/ethpalser/chirpy/internal/database"
+	"github.com/google/uuid"
 )
 
 func (cfg *apiConfig) handlerChirpsGetOne(w http.ResponseWriter, r *http.Request) {
@@ -54,6 +55,34 @@ func (cfg *apiConfig) handlerChirpsGetOne(w http.ResponseWriter, r *http.Request
 		Body:     dbChirp.Message,
 		AuthorID: dbChirp.AuthorID,
 	})
+}
+
+func (cfg *apiConfig) handlerChirpsGetOneV2(w http.ResponseWriter, r *http.Request) {
+	pathChirpID := r.PathValue("chirpID")
+	if pathChirpID == "" {
+		responseWithError(w, http.StatusNotFound, "Chirp not found, missing or invalid id")
+		return
+	}
+
+	chirpUUID, err := uuid.Parse(pathChirpID);
+	if err != nil {
+		responseWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	dbChirp, err := cfg.dbQueries.GetChirp(r.Context(), chirpUUID)
+	if err != nil {
+		responseWithError(w, http.StatusNotFound, "Chirp not found, missing or invalid id")
+		return
+	}
+
+	responseWithJSON(w, http.StatusOK, ChirpView{
+                UUID: dbChirp.ID,
+                CreatedAt: dbChirp.CreatedAt,
+                UpdatedAt: dbChirp.UpdatedAt,
+                Body: dbChirp.Body,
+                UserID: dbChirp.UserID,
+        })
 }
 
 func (cfg *apiConfig) handlerChirpsGetAll(w http.ResponseWriter, r *http.Request) {
